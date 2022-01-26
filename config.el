@@ -4,6 +4,7 @@
 ;; Place your private configuration here! Remember, you do not need to run 'doom
 ;; sync' after modifying this file!
 
+(server-start)
 (setq confirm-kill-emacs nil)
 
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
@@ -23,15 +24,21 @@
 ;; They all accept either a font-spec, font string ("Input Mono-12"), or xlfd
 ;; font string. You generally only need these two:
 
-(setq doom-font (font-spec :family "SF Mono" :size 16 )
-       doom-big-font (font-spec :family "SF Mono" :size 36)
-       doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18))
-(setq doom-theme 'idea-darkula)
+(setq line-spacing 6)
+(setq doom-font (font-spec :family "Fira Code" :size 17 )
+
+      doom-big-font (font-spec :family "SF Mono" :size 36)
+      doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18)
+      doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18))
+
+(setq doom-theme 'spacemacs-dark)
+;;(setq doom-theme 'atom-one-dark)
 
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
 ;;(setq doom-theme 'idea-darkula)
+
 
 
 
@@ -44,7 +51,17 @@
 (set-cursor-color "#66fc03")
 (blink-cursor-mode t)
 (setq select-enable-primary t)
-(setq mouse-drag-copy-region t)
+
+
+;;;; Mouse scrolling in terminal emacs
+(unless (display-graphic-p)
+  ;; activate mouse-based scrolling
+  (xclip-mode 1)
+  (xterm-mouse-mode 1)
+  (solaire-mode nil)
+  (global-set-key (kbd "<mouse-4>") 'scroll-down-line)
+  (global-set-key (kbd "<mouse-5>") 'scroll-up-line)
+  )
 
 ;; Here are some additional functions/macros that could help you configure Doom:
 ;;
@@ -68,10 +85,32 @@
 
 
 
+;; treemacs configs
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; (use-package! treemacs                                     ;;
+;;   :config                                                  ;;
+;;   (progn                                                   ;;
+;;     (treemacs-follow-mode t)                               ;;
+;;     )                                                      ;;
+;;   :bind                                                    ;;
+;;   (:map evil-normal-state-map                              ;;
+;;    ("o" . treemacs-visit-node-default)                     ;;
+;;    ("O"   . treemacs-visit-node-in-external-application))) ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
-
+;; dired tweaks
+;;
+       (after! dired
+         :map dired-mode-map
+         :n "q" #'quit-window
+         :n "a" #'dired-single-buffer
+         :n "^" #'dired-single-up-directory
+         :n "v" #'evil-visual-char
+         :n "O" #'dired-open-mac
+         :n "o" #'dired-preview-mac
+         )
 
 
 
@@ -80,9 +119,10 @@
 
 (setq org-directory "~/notes/")
 
-(setq deft-directory "~/notes"
+(setq deft-directory "~/notes/logseq"
       deft-extensions '("org" "md" "txt")
       deft-default-extension "org"
+      deft-recursive "t"
       deft-new-file-format "%Y%m%d_notes")
 
 
@@ -91,8 +131,15 @@
 
 
 (after! org
+  (setq org-todo-keywords
+        (quote ((sequence "TODO(t)" "INPROGRESS(p)" "|" "DONE(d)")
+                (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)"))))
+  (setq org-image-actual-width nil)
+  (setq org-export-with-toc nil)
+  (setq org-export-with-section-numbers nil)
+  (setq org-export-with-author nil)
   (setq org-capture-templates '(("t" "Quick TODO" entry (file+headline  +org-capture-todo-file
-                                                                        "Inbox") "* TODO %?\n%i\n%a")
+                                                                        "Inbox") "* TODO %i %? \n%a")
                                 ("n" "Quick Capture Notes" entry (file+headline   "notes.org"
                                                                                   "Quick Notes")
                                  "* %U\n** %?\n%i\n%a" )
@@ -100,14 +147,25 @@
                                                                             "notes.org"
                                                                             "Quick Notes")
                                  "* %U\n** %?\n%x\n\n" )
-                                ("j" "Journal" entry (file+headline  +org-capture-journal-file
+                                ("j" "Journal" entry (file+datetree  +org-capture-journal-file
                                                                      "Journal") "* %U\n** %? \n%i\n%a"))))
 
+(use-package! org-roam
+  :custom
+  (org-roam-directory "/Users/mm/notes/logseq/pages")
+  (org-roam-dailies-capture-templates
+   '(("d" "default" entry #'org-roam-capture--get-point "* %?" :file-name "/Users/mm/notes/logseq/journals/%<%Y_%m_%d>" :head "")))
+  (org-roam-capture-templates
+   '(("d" "default" plain
+      #'org-roam-capture--get-point "%?"
+      :file-name "${slug}" :head "#+title: ${title}\n" :unnarrowed t))))
 
 (defun mm/new-org-tab ()
   (interactive)
   (progn (centaur-tabs--create-new-empty-buffer)
          (org-mode)))
+
+
 
 (defun my-org-screenshot ()
   "Take a screenshot into a time stamped unique-named file in the
@@ -119,26 +177,28 @@ same directory as the org-buffer and insert a link to this file."
   (insert (concat "[[./" filename "]]"))
   (org-display-inline-images))
 
-(defun org-insert-clipboard-image
-    (&optional
-     file)
-  (interactive "F")
-  (let )
-  (shell-command (concat "pngpaste " file))
-  (insert (concat "[[" file "]]"))
-  (org-display-inline-images))
+
 
 (setq current-date-time-format "%Y%m%d_%H%M%S")
 
 (defun mm/current-time()
   (format-time-string current-date-time-format (current-time)))
 
+(defun org-insert-clipboard-image
+    (&optional
+     file)
+  (interactive "F")
+  (progn
+    (shell-command (concat "pngpaste " file))
+    (insert (concat "[[" file "]]"))
+    (org-display-inline-images)))
+
 (defun mm/org-insert-image ()
+  "main function for clipboard images"
   (interactive)
   (let ((expected-file
-    (concat  (buffer-file-name) "_" (mm/current-time) ".png")))
-   (org-insert-clipboard-image expected-file)))
-
+         (concat  (buffer-file-name) "_" (mm/current-time) ".png")))
+    (org-insert-clipboard-image expected-file)))
 
 
 ;; window manipulation functions
@@ -228,8 +288,8 @@ same directory as the org-buffer and insert a link to this file."
 
 (defun mm/replace_all_like_selected(x)
   (interactive "sReplace with: ")
-    (let ((ed  (buffer-substring (mark) (point))))
-       (replace-string  ed x nil (point-min) (point-max) )))
+  (let ((ed  (buffer-substring (mark) (point))))
+    (replace-string  ed x nil (point-min) (point-max) )))
 
 
 
@@ -246,19 +306,21 @@ same directory as the org-buffer and insert a link to this file."
 
 
 (use-package! centaur-tabs
-        :demand
-        :config
-        (centaur-tabs-group-by-projectile-project)
-        (centaur-tabs-mode t)
-        :bind (("s-]" . centaur-tabs-forward)
-               ("s-n" . mm/new-org-tab)
-               ("s-[" . centaur-tabs-backward)
-               ("s-m" . centaur-tabs-open-in-external-application)
-               ("s-p" . centaur-tabs-counsel-switch-group)))
+  :demand
+  :config
+  (centaur-tabs-group-by-projectile-project)
+  (centaur-tabs-mode t)
+  :bind (("s-]" . centaur-tabs-forward)
+         ("s-n" . mm/new-org-tab)
+         ("s-[" . centaur-tabs-backward)
+         ("s-m" . centaur-tabs-open-in-external-application)
+         ("s-p" . centaur-tabs-counsel-switch-group)))
 
 
 ;; key bindings
-
+;; s- keys work only in GUI
+;;
+;;
 (global-set-key (kbd "C-S-a") 'hs-toggle-hiding)
 (global-set-key (kbd "C-S-k") 'kill-visual-line)
 (global-set-key (kbd "C-S-r") 'hs-show-all)
@@ -266,6 +328,7 @@ same directory as the org-buffer and insert a link to this file."
 (global-set-key (kbd "C-k") 'kill-whole-line)
 (global-set-key (kbd "C-s") '+default/search-buffer)
 (global-set-key (kbd "C-s-;") 'iedit-rectangle-mode)
+(global-set-key (kbd "C-i") 'better-jumper-jump-backward)
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 (global-set-key (kbd "s-. r") 'mm/replace_all_like_selected)
 (global-set-key (kbd "s-. s") 'mm/filter-text)
@@ -283,8 +346,10 @@ same directory as the org-buffer and insert a link to this file."
 (global-set-key (kbd "s-o") 'other-window)
 
 ;; buffer
-(global-set-key (kbd "<M-s-left>") 'previous-buffer)
-(global-set-key (kbd "<M-s-right>") 'next-buffer)
+;;(global-set-key (kbd "M-[") 'evil-prev-buffer)
+(global-set-key (kbd "C-x ,") 'previous-buffer)
+;;(global-set-key (kbd "M-]") 'evil-next-buffer)
+(global-set-key (kbd "C-x .") 'next-buffer)
 
 (global-set-key (kbd "s-{") 'mm/woccur)
 (global-set-key (kbd "s-k") 'kill-buffer-and-window)
@@ -309,8 +374,10 @@ same directory as the org-buffer and insert a link to this file."
        :desc "rename buffer" "r" #'rename-buffer
        :desc "open buffer" "," #'switch-to-buffer)
       (:prefix-map ("k" . "mmmisc")
-      :desc "unix pipe command on region" "s" #'mm/filter-text
-      :desc "deleting matching lines" "d" #'delete-matching-lines
-      :desc "replace all matching regexp" "r" #'mm/replace_all_like_selected
-      :desc "iedit " ";" #'iedit-mode
-      :desc "iedit rectangle" "'" #'iedit-rectangle-mode))
+       :desc "unix pipe command on region" "s" #'mm/filter-text
+       :desc "deleting matching lines" "d" #'delete-matching-lines
+       :desc "replace all matching regexp" "r" #'mm/replace_all_like_selected
+       :desc "open selected treemacs file" "o" #'treemacs-visit-node-default
+       :desc "open selected treemacs file external" "O" #'treemacs-visit-node-in-external-application
+       :desc "iedit " ";" #'iedit-mode
+       :desc "iedit rectangle" "'" #'iedit-rectangle-mode))

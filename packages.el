@@ -48,10 +48,15 @@
 ;(unpin! pinned-package another-pinned-package)
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
+(unpin! org-roam company-org-roam)
+
 
 (package! iedit)
 (package! org-download)
 (package! beacon)
 (package! elisp-format)
 (package! idea-darkula-theme)
-(package! color-theme-buffer-local)
+(package! atom-one-dark-theme)
+(package! spacemacs-theme)
+(package! org-roam)
+(package! dired-single)

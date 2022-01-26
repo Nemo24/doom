@@ -52,3 +52,5 @@
 ;;  )
 (put 'downcase-region 'disabled nil)
 (put 'erase-buffer 'disabled nil)
+(put 'scroll-left 'disabled nil)
+(put 'narrow-to-region 'disabled nil)
