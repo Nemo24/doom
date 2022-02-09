@@ -60,3 +60,5 @@
 (package! spacemacs-theme)
 (package! org-roam)
 (package! dired-single)
+(package! json-navigator)
+(package! hierarchy)

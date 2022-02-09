@@ -31,8 +31,8 @@
       doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18)
       doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18))
 
-(setq doom-theme 'spacemacs-dark)
-;;(setq doom-theme 'atom-one-dark)
+;(setq doom-theme 'idea-darkula)
+;(setq doom-theme 'atom-one-dark)
 
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
@@ -62,6 +62,7 @@
   (global-set-key (kbd "<mouse-4>") 'scroll-down-line)
   (global-set-key (kbd "<mouse-5>") 'scroll-up-line)
   )
+(setq xterm-set-window-title t)
 
 ;; Here are some additional functions/macros that could help you configure Doom:
 ;;
@@ -82,7 +83,6 @@
 (setq python-shell-interpreter "python3")
 
 (add-to-list 'default-frame-alist '(right-divider-width . 0))
-
 
 
 ;; treemacs configs
@@ -302,7 +302,10 @@ same directory as the org-buffer and insert a link to this file."
   (next-line 1)
   (yank))
 
-
+(defun mm/savebuffer-and-gotonormalmode()
+  (interactive)
+  (evil-force-normal-state)
+  (save-buffer))
 
 
 (use-package! centaur-tabs
@@ -350,24 +353,45 @@ same directory as the org-buffer and insert a link to this file."
 (global-set-key (kbd "C-x ,") 'previous-buffer)
 ;;(global-set-key (kbd "M-]") 'evil-next-buffer)
 (global-set-key (kbd "C-x .") 'next-buffer)
-
 (global-set-key (kbd "s-{") 'mm/woccur)
 (global-set-key (kbd "s-k") 'kill-buffer-and-window)
 (global-set-key (kbd "s-,") 'mm/toggle-main-scratch)
 (global-set-key (kbd "s-<") 'mm/toggle-scratch)
+(global-set-key (kbd "C-M-s") 'mm/savebuffer-and-gotonormalmode)
+(global-set-key (kbd "s-s") 'mm/savebuffer-and-gotonormalmode)
+
 (global-set-key (kbd "s-Z") 'undo-fu-only-redo)
+(global-set-key (kbd "<f8>") '+neotree/open)
+(global-unset-key (kbd "TAB"))
+
+(setq  evil-want-C-i-jump nil)
+(evil-define-key 'normal evil-normal-state-map (kbd "C-n") 'evil-next-line)
+(evil-define-key 'insert evil-insert-state-map (kbd "C-n") 'evil-next-line)
+(evil-define-key 'normal evil-normal-state-map (kbd "C-p") 'evil-previous-line)
+(evil-define-key 'normal (kbd "g <left>") 'centaur-tabs-backward)
+(evil-define-key 'normal (kbd "g <right>") 'centaur-tabs-forward)
+(setq which-key-idle-delay 1)
 
 
 (map! :leader
+      (:desc "open buffers in project" "e" #'projectile-switch-to-buffer)
+      (:desc "next tab" "<right>" #'centaur-tabs-forward)
+      (:desc "previous tab" "<left>" #'centaur-tabs-backward)
       (:prefix-map ("w" . "workspaces/windows")
        :desc "toggle window split" "2" #'mm/toggle-window-split
        :desc "window swap states" "t" #'window-swap-states)
-      (:prefix-map ("p" . "project")
+      (:prefix-map ("d" . "neotree .. ")
+       :desc "neotree-toggle-for-project" "d" #'+neotee/open
+       :desc "show current file in neotree" "f" #'neotree-find)
+     (:prefix-map ("p" . "project")
        :desc "open project file in other window" "w" #'projectile-find-file-other-window
        :desc "project search" "s" #'+ivy/project-search)
       (:prefix-map ("b" . "buffer")
        :desc "open project specific scratch window" "p" #'doom/open-project-scratch-buffer
+       :desc "open buffer in other window" "f" #'+ivy/switch-buffer-other-window
        :desc "rename buffer" "r" #'rename-buffer
+       :desc "new empty buffer" "n" #'centaur-tabs--create-new-empty-buffer
+       :desc "new empty org buffer" "o" #'mm/new-org-tab
        :desc "open buffer" "," #'switch-to-buffer)
       (:prefix-map ("f" . "file")
        :desc "find file fuzzy" "z" #'projectile-find-file
@@ -377,6 +401,7 @@ same directory as the org-buffer and insert a link to this file."
        :desc "unix pipe command on region" "s" #'mm/filter-text
        :desc "deleting matching lines" "d" #'delete-matching-lines
        :desc "replace all matching regexp" "r" #'mm/replace_all_like_selected
+       :desc "open recent files" "f" #'counsel-recentf
        :desc "open selected treemacs file" "o" #'treemacs-visit-node-default
        :desc "open selected treemacs file external" "O" #'treemacs-visit-node-in-external-application
        :desc "iedit " ";" #'iedit-mode
