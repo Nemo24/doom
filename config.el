@@ -25,20 +25,19 @@
 ;; font string. You generally only need these two:
 
 (setq line-spacing 6)
-(setq doom-font (font-spec :family "Fira Code" :size 17 )
+(setq doom-font (font-spec :family "Fira Code" :size 16 )
 
-      doom-big-font (font-spec :family "SF Mono" :size 36)
+      doom-big-font (font-spec :family "SF Mono" :size 24)
       doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18)
       doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18))
 
-;(setq doom-theme 'idea-darkula)
-;(setq doom-theme 'atom-one-dark)
 
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
-;;(setq doom-theme 'idea-darkula)
-
+;;(setq doom-theme 'spacemacs-dark)
+(after! doom-themes (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+                          doom-themes-enable-italic nil)) ; if nil, italics is universally disabled
 
 
 
@@ -102,15 +101,15 @@
 
 ;; dired tweaks
 ;;
-       (after! dired
-         :map dired-mode-map
-         :n "q" #'quit-window
-         :n "a" #'dired-single-buffer
-         :n "^" #'dired-single-up-directory
-         :n "v" #'evil-visual-char
-         :n "O" #'dired-open-mac
-         :n "o" #'dired-preview-mac
-         )
+(after! dired
+  :map dired-mode-map
+  :n "q" #'quit-window
+  :n "a" #'dired-single-buffer
+  :n "^" #'dired-single-up-directory
+  :n "v" #'evil-visual-char
+  :n "O" #'dired-open-mac
+  :n "o" #'dired-preview-mac
+  )
 
 
 
@@ -119,7 +118,7 @@
 
 (setq org-directory "~/notes/")
 
-(setq deft-directory "~/notes/logseq"
+(setq deft-directory "~/notes/"
       deft-extensions '("org" "md" "txt")
       deft-default-extension "org"
       deft-recursive "t"
@@ -129,36 +128,50 @@
 (defun mm/append-dt (file)
   concat (format-time-string "%Y%m%d_") file )
 
+(defun mm/get-journal-file-monthly ()
+  "Return filename for this months's journal entry."
+  (let ((monthly-name (format-time-string "%Y%m"))
+        )
+    (expand-file-name (concat org-journal-dir (format "%s.org" monthly-name)))))
 
+(defun mm/create-notes-file ()
+  "Create an org file in ~/notes/."
+  (interactive)
+  (let ((name (read-string "Filename: ")))
+    (expand-file-name (format "%s.org"
+                              name) "~/notes/")))
+
+(defun mm/save-notes-file ()
+  "Save to an org file in ~/notes/."
+  (interactive)
+  (let ((name (read-string "Filename: ")))
+    (expand-file-name (format "%s.org"
+                              name) "~/notes/")))
 (after! org
   (setq org-todo-keywords
         (quote ((sequence "TODO(t)" "INPROGRESS(p)" "|" "DONE(d)")
                 (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)"))))
+  (setq org-journal-file-type 'monthly)
   (setq org-image-actual-width nil)
   (setq org-export-with-toc nil)
   (setq org-export-with-section-numbers nil)
   (setq org-export-with-author nil)
   (setq org-capture-templates '(("t" "Quick TODO" entry (file+headline  +org-capture-todo-file
                                                                         "Inbox") "* TODO %i %? \n%a")
-                                ("n" "Quick Capture Notes" entry (file+headline   "notes.org"
-                                                                                  "Quick Notes")
-                                 "* %U\n** %?\n%i\n%a" )
-                                ("N" "Quick Capture Notes Clipboard" entry (file+headline
-                                                                            "notes.org"
-                                                                            "Quick Notes")
-                                 "* %U\n** %?\n%x\n\n" )
-                                ("j" "Journal" entry (file+datetree  +org-capture-journal-file
-                                                                     "Journal") "* %U\n** %? \n%i\n%a"))))
-
-(use-package! org-roam
-  :custom
-  (org-roam-directory "/Users/mm/notes/logseq/pages")
-  (org-roam-dailies-capture-templates
-   '(("d" "default" entry #'org-roam-capture--get-point "* %?" :file-name "/Users/mm/notes/logseq/journals/%<%Y_%m_%d>" :head "")))
-  (org-roam-capture-templates
-   '(("d" "default" plain
-      #'org-roam-capture--get-point "%?"
-      :file-name "${slug}" :head "#+title: ${title}\n" :unnarrowed t))))
+                                ("n" "Quick Capture Notes with current selected" entry (file+headline
+                                                                                        "notes.org"
+                                                                                        "Quick Notes")
+                                 "* %U\n** %?\n%i\n\n" )
+                                ("N" "Quick Capture Notes with clipboard" entry (file+headline
+                                                                                 "notes.org"
+                                                                                 "Quick Notes")
+                                 "* %U\n** %?\n%c\n\n" )
+                                ("j" "Monthly Journal with selection" entry (file mm/get-journal-file-monthly )
+                                 "* %U\n** %? \n %i" )
+                                ("J" "Monthly Journal with clipboard" entry (file mm/get-journal-file-monthly )
+                                 "* %U\n** %?\n%c\n" )
+                                ("o" "New Note" entry (file mm/create-notes-file)  "* %? \n  %i ")
+                                )))
 
 (defun mm/new-org-tab ()
   (interactive)
@@ -359,7 +372,6 @@ same directory as the org-buffer and insert a link to this file."
 (global-set-key (kbd "s-<") 'mm/toggle-scratch)
 (global-set-key (kbd "C-M-s") 'mm/savebuffer-and-gotonormalmode)
 (global-set-key (kbd "s-s") 'mm/savebuffer-and-gotonormalmode)
-
 (global-set-key (kbd "s-Z") 'undo-fu-only-redo)
 (global-set-key (kbd "<f8>") '+neotree/open)
 (global-unset-key (kbd "TAB"))
@@ -368,8 +380,6 @@ same directory as the org-buffer and insert a link to this file."
 (evil-define-key 'normal evil-normal-state-map (kbd "C-n") 'evil-next-line)
 (evil-define-key 'insert evil-insert-state-map (kbd "C-n") 'evil-next-line)
 (evil-define-key 'normal evil-normal-state-map (kbd "C-p") 'evil-previous-line)
-(evil-define-key 'normal (kbd "g <left>") 'centaur-tabs-backward)
-(evil-define-key 'normal (kbd "g <right>") 'centaur-tabs-forward)
 (setq which-key-idle-delay 1)
 
 
@@ -377,32 +387,37 @@ same directory as the org-buffer and insert a link to this file."
       (:desc "open buffers in project" "e" #'projectile-switch-to-buffer)
       (:desc "next tab" "<right>" #'centaur-tabs-forward)
       (:desc "previous tab" "<left>" #'centaur-tabs-backward)
+      (:prefix-map ("r" . "rectangle")
+       :desc "insert rectangle" "i" #'string-insert-rectangle
+       :desc "replace rectangle" "r" #'replace-rectangle
+       :desc "delete rectangle" "d" #'delete-rectangle
+       :desc "cut rectangle" "t" #'kill-rectangle
+       :desc "paste copied rectangle" "p" #'yank-rectangle
+       :desc "copy rectangle area " "c" #'copy-rectangle-as-kill)
       (:prefix-map ("w" . "workspaces/windows")
        :desc "toggle window split" "2" #'mm/toggle-window-split
        :desc "window swap states" "t" #'window-swap-states)
       (:prefix-map ("d" . "neotree .. ")
-       :desc "neotree-toggle-for-project" "d" #'+neotee/open
+       :desc "neotree-toggle-for-project" "d" #'+neotree/open
        :desc "show current file in neotree" "f" #'neotree-find)
-     (:prefix-map ("p" . "project")
+      (:prefix-map ("p" . "project")
        :desc "open project file in other window" "w" #'projectile-find-file-other-window
        :desc "project search" "s" #'+ivy/project-search)
       (:prefix-map ("b" . "buffer")
        :desc "open project specific scratch window" "p" #'doom/open-project-scratch-buffer
-       :desc "open buffer in other window" "f" #'+ivy/switch-buffer-other-window
+       :desc "open buffer in other window" "w" #'+ivy/switch-buffer-other-window
        :desc "rename buffer" "r" #'rename-buffer
        :desc "new empty buffer" "n" #'centaur-tabs--create-new-empty-buffer
        :desc "new empty org buffer" "o" #'mm/new-org-tab
        :desc "open buffer" "," #'switch-to-buffer)
       (:prefix-map ("f" . "file")
        :desc "find file fuzzy" "z" #'projectile-find-file
+       :desc "open project file in other window" "w" #'projectile-find-file-other-window
        :desc "rename buffer" "r" #'rename-buffer
        :desc "open buffer" "," #'switch-to-buffer)
       (:prefix-map ("k" . "mmmisc")
        :desc "unix pipe command on region" "s" #'mm/filter-text
        :desc "deleting matching lines" "d" #'delete-matching-lines
        :desc "replace all matching regexp" "r" #'mm/replace_all_like_selected
-       :desc "open recent files" "f" #'counsel-recentf
-       :desc "open selected treemacs file" "o" #'treemacs-visit-node-default
-       :desc "open selected treemacs file external" "O" #'treemacs-visit-node-in-external-application
        :desc "iedit " ";" #'iedit-mode
        :desc "iedit rectangle" "'" #'iedit-rectangle-mode))

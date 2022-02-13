@@ -48,7 +48,7 @@
 ;(unpin! pinned-package another-pinned-package)
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
-(unpin! org-roam company-org-roam)
+;;(unpin! org-roam company-org-roam)
 
 
 (package! iedit)
@@ -58,7 +58,7 @@
 (package! idea-darkula-theme)
 (package! atom-one-dark-theme)
 (package! spacemacs-theme)
-(package! org-roam)
+;;(package! org-roam)
 (package! dired-single)
 (package! json-navigator)
 (package! hierarchy)
