@@ -1,3 +1,4 @@
+
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
 
@@ -31,7 +32,6 @@
       doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18)
       doom-variable-pitch-font (font-spec :family "Avenir Next" :size 18))
 
-
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
@@ -46,12 +46,13 @@
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
 (setq display-line-numbers-type t)
 (global-so-long-mode 1)
+(global-visual-line-mode t)
 (setq-default cursor-type '(bar . 4))
 (set-cursor-color "#66fc03")
 (blink-cursor-mode t)
 (setq select-enable-primary t)
-
-
+(beacon-mode t)
+(setq beacon-color "#00FF00")
 ;;;; Mouse scrolling in terminal emacs
 (unless (display-graphic-p)
   ;; activate mouse-based scrolling
@@ -62,68 +63,25 @@
   (global-set-key (kbd "<mouse-5>") 'scroll-up-line)
   )
 (setq xterm-set-window-title t)
+(setq doom-unreal-buffer-functions '(minibufferp))
 
-;; Here are some additional functions/macros that could help you configure Doom:
-;;
-;; - `load!' for loading external *.el files relative to this one
-;; - `use-package!' for configuring packages
-;; - `after!' for running code after a package has loaded
-;; - `add-load-path!' for adding directories to the `load-path', relative to
-;;   this file. Emacs searches the `load-path' when you load packages with
-;;   `require' or `use-package'.
-;; - `map!' for binding new keys
-;;
-;; To get information about any of these functions/macros, move the cursor over
-;; the highlighted symbol at press 'K' (non-evil users must press 'C-c c k').
-;; This will open documentation for it, including demos of how they are used.
-;;
-;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
-;; they are implemented.
+(load! "lisp/prot-eshell")
+(define-key eshell-mode-map (kbd "s-<mouse-1>") #'prot-eshell-ffap-find-file)
+
 (setq python-shell-interpreter "python3")
 
 (add-to-list 'default-frame-alist '(right-divider-width . 0))
 
-
-;; treemacs configs
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; (use-package! treemacs                                     ;;
-;;   :config                                                  ;;
-;;   (progn                                                   ;;
-;;     (treemacs-follow-mode t)                               ;;
-;;     )                                                      ;;
-;;   :bind                                                    ;;
-;;   (:map evil-normal-state-map                              ;;
-;;    ("o" . treemacs-visit-node-default)                     ;;
-;;    ("O"   . treemacs-visit-node-in-external-application))) ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;; dired tweaks
-;;
-(after! dired
-  :map dired-mode-map
-  :n "q" #'quit-window
-  :n "a" #'dired-single-buffer
-  :n "^" #'dired-single-up-directory
-  :n "v" #'evil-visual-char
-  :n "O" #'dired-open-mac
-  :n "o" #'dired-preview-mac
-  )
-
-
+(setq ivy-height 14)
 
 ;; org manipulation functions
-
-
 (setq org-directory "~/notes/")
 
 (setq deft-directory "~/notes/"
       deft-extensions '("org" "md" "txt")
       deft-default-extension "org"
-      deft-recursive "t"
+      deft-recursive nil
       deft-new-file-format "%Y%m%d_notes")
-
 
 (defun mm/append-dt (file)
   concat (format-time-string "%Y%m%d_") file )
@@ -132,7 +90,9 @@
   "Return filename for this months's journal entry."
   (let ((monthly-name (format-time-string "%Y%m"))
         )
-    (expand-file-name (concat org-journal-dir (format "%s.org" monthly-name)))))
+    (expand-file-name (concat  "~/notes/journal/" (format "%s.org" monthly-name)))))
+
+
 
 (defun mm/create-notes-file ()
   "Create an org file in ~/notes/."
@@ -141,12 +101,30 @@
     (expand-file-name (format "%s.org"
                               name) "~/notes/")))
 
-(defun mm/save-notes-file ()
-  "Save to an org file in ~/notes/."
+(defun mm/toggle-weekly-todo ()
   (interactive)
-  (let ((name (read-string "Filename: ")))
-    (expand-file-name (format "%s.org"
-                              name) "~/notes/")))
+  (if (string-equal (buffer-name) "todo.org")   (previous-buffer) (find-file "~/notes/todo.org")))
+
+(defun mm/toggle-eshell()
+  (interactive)
+  (if (string-equal (buffer-name) "*eshell*")   (previous-buffer) (eshell)))
+
+(defun mm/rename-file-and-buffer ()
+  "Rename the current buffer and file it is visiting."
+  (interactive)
+  (let ((filename (buffer-file-name)))
+    (if (not (and filename (file-exists-p filename)))
+        (message "Buffer is not visiting a file!")
+      (let ((new-name (read-file-name "New name: " filename)))
+        (cond
+         ((vc-backend filename) (vc-rename-file filename new-name))
+         (t
+          (rename-file filename new-name t)
+          (set-visited-file-name new-name t t)))))))
+
+
+
+
 (after! org
   (setq org-todo-keywords
         (quote ((sequence "TODO(t)" "INPROGRESS(p)" "|" "DONE(d)")
@@ -170,7 +148,8 @@
                                  "* %U\n** %? \n %i" )
                                 ("J" "Monthly Journal with clipboard" entry (file mm/get-journal-file-monthly )
                                  "* %U\n** %?\n%c\n" )
-                                ("o" "New Note" entry (file mm/create-notes-file)  "* %? \n  %i ")
+                                ("o" "New Note with selection" entry (file mm/create-notes-file)  "* %? \n  %i ")
+                                ("O" "New Note with clipboard" entry (file mm/create-notes-file)  "* %? \n  %c ")
                                 )))
 
 (defun mm/new-org-tab ()
@@ -193,7 +172,6 @@ same directory as the org-buffer and insert a link to this file."
 
 
 (setq current-date-time-format "%Y%m%d_%H%M%S")
-
 (defun mm/current-time()
   (format-time-string current-date-time-format (current-time)))
 
@@ -242,10 +220,9 @@ same directory as the org-buffer and insert a link to this file."
 
 (defun mm/toggle-main-scratch()
   (interactive)
-  (let ((bname (buffer-name)))
-    (if (string-match "*scratch*" bname)
+      (if (string-match (buffer-name) "*scratch*")
         (delete-window)
-      (switch-to-buffer-other-window "*scratch*"))))
+      (switch-to-buffer-other-window "*scratch*")))
 
 
 (defun mm/toggle-scratch()
@@ -317,9 +294,23 @@ same directory as the org-buffer and insert a link to this file."
 
 (defun mm/savebuffer-and-gotonormalmode()
   (interactive)
-  (evil-force-normal-state)
-  (save-buffer))
+  (save-buffer)
+  ;;(evil-force-normal-state)
+  )
 
+(defun mm/single-up-dir()   (interactive) (find-alternate-file ".."))
+
+;;dired
+(global-unset-key (kbd "s-d"))
+(global-set-key (kbd "s-d -") 'dired-jump)
+(use-package! dired
+  :config
+  (put 'dired-find-alternate-file 'disabled nil)
+  :bind ( ("s-<down>" . dired-single-buffer)
+          ("s-<up>" . mm/single-up-dir)
+          ("<down-mouse-1>" . dired-single-buffer)
+          )
+  )
 
 (use-package! centaur-tabs
   :demand
@@ -329,62 +320,112 @@ same directory as the org-buffer and insert a link to this file."
   :bind (("s-]" . centaur-tabs-forward)
          ("s-n" . mm/new-org-tab)
          ("s-[" . centaur-tabs-backward)
-         ("s-m" . centaur-tabs-open-in-external-application)
-         ("s-p" . centaur-tabs-counsel-switch-group)))
+         ))
 
 
 ;; key bindings
 ;; s- keys work only in GUI
 ;;
 ;;
-(global-set-key (kbd "C-S-a") 'hs-toggle-hiding)
 (global-set-key (kbd "C-S-k") 'kill-visual-line)
-(global-set-key (kbd "C-S-r") 'hs-show-all)
 (global-set-key (kbd "C-d") 'mm/duplicate-line)
-(global-set-key (kbd "C-k") 'kill-whole-line)
 (global-set-key (kbd "C-s") '+default/search-buffer)
-(global-set-key (kbd "C-s-;") 'iedit-rectangle-mode)
-(global-set-key (kbd "C-i") 'better-jumper-jump-backward)
+(global-set-key (kbd "C-i") 'better-jumper-jump-forward)
+(global-set-key (kbd "C-o") 'better-jumper-jump-backward)
 (global-set-key (kbd "C-x C-b") 'ibuffer)
-(global-set-key (kbd "s-. r") 'mm/replace_all_like_selected)
-(global-set-key (kbd "s-. s") 'mm/filter-text)
+(global-set-key (kbd "C-x C-x") 'counsel-M-x)
+;;
+;; misc based operations start with s-m .find better way
+(global-unset-key (kbd "s-m"))
+(global-set-key (kbd "s-m r") 'mm/replace_all_like_selected)
+(global-set-key (kbd "s-m s") 'mm/filter-text)
+
+;; iedit based op s-i
+(global-set-key (kbd "s-i i") 'iedit-mode)
+(global-set-key (kbd "s-i r") 'iedit-rectangle-mode)
+(global-set-key (kbd "s-i q") 'iedit--quit)
 (global-set-key (kbd "s-x") 'kill-region)
 
+
+;; line based ops
+(global-unset-key (kbd "s-l"))
+(global-set-key (kbd "s-l l") 'kill-whole-line)
+(global-set-key (kbd "s-l k") 'kill-line)
+(global-set-key (kbd "s-l g") 'goto-line)
+(global-set-key (kbd "s-l c") 'mm/duplicate-line)
+(global-set-key (kbd "s-l ]") 'end-of-buffer)
+(global-set-key (kbd "s-l [") 'beginning-of-buffer)
 
 ;; window
 (global-set-key (kbd "s-0") 'delete-window)
 (global-set-key (kbd "s-1") 'delete-other-windows)
 (global-set-key (kbd "s-2") 'split-window-below)
 (global-set-key (kbd "s-3") 'split-window-right)
-(global-set-key (kbd "s-;") 'iedit-mode)
-(global-set-key (kbd "s-'") 'iedit-rectangle-mode)
-(global-set-key (kbd "s-b") 'ivy-switch-buffer)
 (global-set-key (kbd "s-o") 'other-window)
 
 ;; buffer
-;;(global-set-key (kbd "M-[") 'evil-prev-buffer)
-(global-set-key (kbd "C-x ,") 'previous-buffer)
-;;(global-set-key (kbd "M-]") 'evil-next-buffer)
-(global-set-key (kbd "C-x .") 'next-buffer)
-(global-set-key (kbd "s-{") 'mm/woccur)
+(global-unset-key (kbd "s-b"))
+(global-set-key (kbd "s-b v") 'previous-buffer)
+(global-set-key (kbd "s-b n") 'next-buffer)
+(global-set-key (kbd "s-b w") 'switch-to-buffer-other-window)
+(global-set-key (kbd "s-b b") 'ivy-switch-buffer)
+(global-set-key (kbd "s-b <SPC>") 'projectile-switch-to-buffer)
 (global-set-key (kbd "s-k") 'kill-buffer-and-window)
-(global-set-key (kbd "s-,") 'mm/toggle-main-scratch)
-(global-set-key (kbd "s-<") 'mm/toggle-scratch)
+(global-set-key (kbd "M-s-<right>") 'next-buffer)
+(global-set-key (kbd "M-s-<left>") 'previous-buffer)
 (global-set-key (kbd "C-M-s") 'mm/savebuffer-and-gotonormalmode)
 (global-set-key (kbd "s-s") 'mm/savebuffer-and-gotonormalmode)
+
+;; eshell
+(global-unset-key (kbd "s-e"))
+(global-set-key (kbd "s-e e") 'mm/toggle-eshell)
+(global-set-key (kbd "s-e f") 'prot-eshell-ffap-find-file)
+(global-set-key (kbd "s-e r") 'prot-eshell-complete-recent-dir)
+
+;; toggle buffer
+(global-unset-key (kbd "s-t"))
+(global-set-key (kbd "s-t t") 'mm/toggle-main-scratch)
+(global-set-key (kbd "s-t e") 'mm/toggle-eshell)
+(global-set-key (kbd "s-t p") 'mm/toggle-scratch)
+(global-set-key (kbd "s-d d") 'neotree-toggle)
+(global-set-key (kbd "s-d f") 'neotree-find)
+
+
+
+
+;; project
+(global-unset-key (kbd "s-p"))
+(global-set-key (kbd "s-p p") 'projectile-switch-project)
+(global-set-key (kbd "s-p [") 'centaur-tabs-counsel-switch-group)
+(global-set-key (kbd "s-p o")  'centaur-tabs-open-in-external-application)
+
+
+;; misc
+(global-unset-key (kbd "s-f"))
+(global-set-key (kbd "s-f f") '+ivy/projectile-find-file)
+(global-set-key (kbd "s-f /") '+ivy/project-search)
+(global-set-key (kbd "s-f w") 'projectile-find-file-other-window)
+(global-set-key (kbd "s-f .") 'counsel-find-file)
+(global-set-key (kbd "s-.") 'counsel-find-file)
+(global-set-key (kbd "s-,") '+ivy/switch-buffer)
+(global-set-key (kbd "s-f ,") 'find-file-other-window)
+
 (global-set-key (kbd "s-Z") 'undo-fu-only-redo)
-(global-set-key (kbd "<f8>") '+neotree/open)
 (global-unset-key (kbd "TAB"))
 
-(setq  evil-want-C-i-jump nil)
-(evil-define-key 'normal evil-normal-state-map (kbd "C-n") 'evil-next-line)
-(evil-define-key 'insert evil-insert-state-map (kbd "C-n") 'evil-next-line)
-(evil-define-key 'normal evil-normal-state-map (kbd "C-p") 'evil-previous-line)
+;;(setq  evil-want-C-i-jump nil)
+;;(evil-define-key 'normal evil-normal-state-map (kbd "C-n") 'evil-next-line)
+;;(evil-define-key 'insert evil-insert-state-map (kbd "C-n") 'evil-next-line)
+;;(evil-define-key 'normal evil-normal-state-map (kbd "C-p") 'evil-previous-line)
 (setq which-key-idle-delay 1)
 
 
 (map! :leader
       (:desc "open buffers in project" "e" #'projectile-switch-to-buffer)
+      (:desc "toggle weekly todo" "1" #'mm/toggle-weekly-todo)
+      (:desc "open buffers in project" "<" #'projectile-switch-to-buffer)
+      (:desc "open buffer" "," #'+ivy/switch-buffer)
+      (:desc "find file" "," #'counsel-find-file)
       (:desc "next tab" "<right>" #'centaur-tabs-forward)
       (:desc "previous tab" "<left>" #'centaur-tabs-backward)
       (:prefix-map ("r" . "rectangle")
@@ -396,24 +437,33 @@ same directory as the org-buffer and insert a link to this file."
        :desc "copy rectangle area " "c" #'copy-rectangle-as-kill)
       (:prefix-map ("w" . "workspaces/windows")
        :desc "toggle window split" "2" #'mm/toggle-window-split
-       :desc "window swap states" "t" #'window-swap-states)
+       :desc "delete other window" "1" #'delete-other-windows
+       :desc "delete this window" "1" #'delete-window
+       :desc "window swap states" "t" #'window-swap-states
+       :desc "winner undo" "u" #'winner-undo
+       :desc "winner redo" "r" #'winner-redo)
       (:prefix-map ("d" . "neotree .. ")
        :desc "neotree-toggle-for-project" "d" #'+neotree/open
        :desc "show current file in neotree" "f" #'neotree-find)
+      (:prefix-map ("z" . "folds .. ")
+       :desc "fold-toggle" "a" #'+fold/toggle
+       :desc "fold-close" "c" #'+fold/close
+       :desc "fold-closeall" "m" #'+fold/close-all
+       :desc "fold-open" "o" #'+fold/open
+       :desc "fold-openall" "r" #'+fold/open-all)
       (:prefix-map ("p" . "project")
        :desc "open project file in other window" "w" #'projectile-find-file-other-window
        :desc "project search" "s" #'+ivy/project-search)
       (:prefix-map ("b" . "buffer")
        :desc "open project specific scratch window" "p" #'doom/open-project-scratch-buffer
        :desc "open buffer in other window" "w" #'+ivy/switch-buffer-other-window
-       :desc "rename buffer" "r" #'rename-buffer
+       :desc "rename file and buffer" "r" #'mm/rename-file-and-buffer
        :desc "new empty buffer" "n" #'centaur-tabs--create-new-empty-buffer
        :desc "new empty org buffer" "o" #'mm/new-org-tab
        :desc "open buffer" "," #'switch-to-buffer)
       (:prefix-map ("f" . "file")
        :desc "find file fuzzy" "z" #'projectile-find-file
-       :desc "open project file in other window" "w" #'projectile-find-file-other-window
-       :desc "rename buffer" "r" #'rename-buffer
+       :desc "open  file in other window" "w" #'find-file-other-window
        :desc "open buffer" "," #'switch-to-buffer)
       (:prefix-map ("k" . "mmmisc")
        :desc "unix pipe command on region" "s" #'mm/filter-text

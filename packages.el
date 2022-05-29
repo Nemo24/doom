@@ -62,3 +62,5 @@
 (package! dired-single)
 (package! json-navigator)
 (package! hierarchy)
+(package! ibuffer-vc)
+(package! kubernetes)
