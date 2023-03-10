@@ -60,7 +60,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(dired-ranger vscode-dark-plus-theme atom-dark-theme kaolin-themes poet-theme eclipse-theme modus-themes autumn-light-theme nano-theme vs-dark-theme vs-light-theme)))
+   '(jetbrains-darcula-theme haskell-tng-mode intellij-theme obsidian-theme dired-ranger vscode-dark-plus-theme atom-dark-theme kaolin-themes poet-theme eclipse-theme modus-themes autumn-light-theme nano-theme vs-dark-theme vs-light-theme)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

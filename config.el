@@ -24,7 +24,7 @@
 ;;
 ;; They all accept either a font-spec, font string ("Input Mono-12"), or xlfd
 ;; font string. You generally only need these two:
-
+(menu-bar-mode -1)
 (setq line-spacing 6)
 (setq doom-font (font-spec :family "Fira Code" :size 16 )
 
@@ -50,7 +50,7 @@
 (setq-default cursor-type '(bar . 4))
 (set-cursor-color "#66fc03")
 (blink-cursor-mode t)
-(setq select-enable-primary t)
+(setq select-enable-primary nil)
 (beacon-mode t)
 (setq beacon-color "#00FF00")
 ;;;; Mouse scrolling in terminal emacs
@@ -62,6 +62,7 @@
   (global-set-key (kbd "<mouse-4>") 'scroll-down-line)
   (global-set-key (kbd "<mouse-5>") 'scroll-up-line)
   )
+
 (setq xterm-set-window-title t)
 (setq doom-unreal-buffer-functions '(minibufferp))
 
@@ -93,6 +94,9 @@
     (expand-file-name (concat  "~/notes/journal/" (format "%s.org" monthly-name)))))
 
 
+(defun swiper-all-buffer-p (buffer)
+  (with-current-buffer buffer
+    (not (eq major-mode 'minibuffer-inactive-mode))))
 
 (defun mm/create-notes-file ()
   "Create an org file in ~/notes/."
@@ -232,36 +236,11 @@ same directory as the org-buffer and insert a link to this file."
         (delete-window)
       (doom/open-project-scratch-buffer))))
 
+(after! projectile
+  (add-to-list 'projectile-globally-ignored-directories "^build$")
+  (add-to-list 'projectile-globally-ignored-directories "^.venv$")
+  (setq projectile-indexing-method 'alien))
 
-
-(defun mm/woccur ()
-  "Invoke a wgrep buffer on the current ivy results, if supported."
-  (interactive)
-  (unless (window-minibuffer-p)
-    (user-error "No completion session is active"))
-  (require 'wgrep)
-  (let ((caller (ivy-state-caller ivy-last)))
-    (if-let (occur-fn (plist-get +ivy-edit-functions caller))
-        (ivy-exit-with-action
-         (lambda (_) (funcall occur-fn)))
-      (if-let (occur-fn (plist-get ivy--occurs-list caller))
-          (let ((buffer (generate-new-buffer
-                         (format "*ivy-occur%s \"%s\"*"
-                                 (if caller (concat " " (prin1-to-string caller)) "")
-                                 ivy-text))))
-            (with-current-buffer buffer
-              (let ((inhibit-read-only t))
-                (erase-buffer)
-                (funcall occur-fn))
-              (setf (ivy-state-text ivy-last) ivy-text)
-              (setq ivy-occur-last ivy-last)
-              (setq-local ivy--directory ivy--directory))
-            (ivy-exit-with-action
-             `(lambda (_)
-                (display-buffer ,buffer)
-                (ivy-wgrep-change-to-wgrep-mode)
-                (mm/toggle-window-split))))
-        (user-error "%S doesn't support wgrep" caller)))))
 
 ;; text manipulation  functions
 
@@ -281,7 +260,31 @@ same directory as the org-buffer and insert a link to this file."
   (let ((ed  (buffer-substring (mark) (point))))
     (replace-string  ed x nil (point-min) (point-max) )))
 
+(defun mm/add_at_start()
+  (interactive )
+    (let ((p (if mark-active (region-beginning)
+             (point-min)))
+        (m (if mark-active (region-end)
+             (point-max))))
 
+    (replace-regexp "^" (read-string "Enter string to add at start:") nil p m ) )
+ )
+(defun mm/add_at_end()
+  (interactive )
+    (let ((p (if mark-active (region-beginning)
+             (point-min)))
+        (m (if mark-active (region-end)
+             (point-max))))
+
+    (replace-regexp "$" (read-string "Enter string to add at end:") nil p m ) )
+ )
+
+(defun mm/copy-line (arg)
+  "Copy lines (as many as prefix argument) in the kill ring"
+  (interactive "p")
+  (kill-ring-save (line-beginning-position)
+                  (line-beginning-position (+ 1 arg)))
+  (message "%d line%s copied" arg (if (= 1 arg) "" "s")))
 
 (defun mm/duplicate-line()
   (interactive)
@@ -292,10 +295,49 @@ same directory as the org-buffer and insert a link to this file."
   (next-line 1)
   (yank))
 
+;; xah lee copy
+(defun my-delete-word (arg)
+  "Delete characters forward until encountering the end of a word.
+With argument, do this that many times.
+This command does not push erased text to kill-ring."
+  (interactive "p")
+  (delete-region (point) (progn (forward-word arg) (point))))
+
+(defun my-backward-delete-word (arg)
+  "Delete characters backward until encountering the beginning of a word.
+With argument, do this that many times.
+This command does not push erased text to kill-ring."
+  (interactive "p")
+  (my-delete-word (- arg)))
+
+(defun my-delete-line ()
+  "Delete text from current position to end of line char."
+  (interactive)
+  (delete-region
+   (point)
+   (save-excursion (move-end-of-line 1) (point)))
+)
+
+(defun my-delete-line-backward ()
+  "Delete text between the beginning of the line to the cursor position."
+  (interactive)
+  (let (x1 x2)
+    (setq x1 (point))
+    (move-beginning-of-line 1)
+    (setq x2 (point))
+    (delete-region x1 x2)))
+
+; Here's the code to bind them with emacs's default shortcut keys:
+
+(global-set-key (kbd "M-d") 'my-delete-word)
+(global-set-key (kbd "<M-backspace>") 'my-backward-delete-word)
+(global-set-key (kbd "C-k") 'my-delete-line)
+(global-set-key (kbd "C-S-k") 'my-delete-line-backward)
+
 (defun mm/savebuffer-and-gotonormalmode()
   (interactive)
   (save-buffer)
-  ;;(evil-force-normal-state)
+  ;; (evil-force-normal-state)
   )
 
 (defun mm/single-up-dir()   (interactive) (find-alternate-file ".."))
@@ -308,18 +350,25 @@ same directory as the org-buffer and insert a link to this file."
   (put 'dired-find-alternate-file 'disabled nil)
   :bind ( ("s-<down>" . dired-single-buffer)
           ("s-<up>" . mm/single-up-dir)
-          ("<down-mouse-1>" . dired-single-buffer)
           )
   )
 
 (use-package! centaur-tabs
   :demand
   :config
+  (setq 	  centaur-tabs-height 32
+	          centaur-tabs-set-icons t
+	          centaur-tabs-set-modified-marker t
+	          centaur-tabs-show-navigation-buttons t
+                  centaur-tabs-active-bar t)
   (centaur-tabs-group-by-projectile-project)
   (centaur-tabs-mode t)
   :bind (("s-]" . centaur-tabs-forward)
-         ("s-n" . mm/new-org-tab)
          ("s-[" . centaur-tabs-backward)
+         ("s-{" . centaur-tabs-move-current-tab-to-left)
+         ("s-}" . centaur-tabs-move-current-tab-to-right)
+         ("s-n" . centaur-tabs--create-new-empty-buffer)
+         ("s-N" . mm/new-org-tab)
          ))
 
 
@@ -338,7 +387,9 @@ same directory as the org-buffer and insert a link to this file."
 ;; misc based operations start with s-m .find better way
 (global-unset-key (kbd "s-m"))
 (global-set-key (kbd "s-m r") 'mm/replace_all_like_selected)
-(global-set-key (kbd "s-m s") 'mm/filter-text)
+(global-set-key (kbd "s-m f") 'mm/filter-text)
+(global-set-key (kbd "s-m s") 'mm/add_at_start)
+(global-set-key (kbd "s-m e") 'mm/add_at_end)
 
 ;; iedit based op s-i
 (global-set-key (kbd "s-i i") 'iedit-mode)
@@ -352,7 +403,8 @@ same directory as the org-buffer and insert a link to this file."
 (global-set-key (kbd "s-l l") 'kill-whole-line)
 (global-set-key (kbd "s-l k") 'kill-line)
 (global-set-key (kbd "s-l g") 'goto-line)
-(global-set-key (kbd "s-l c") 'mm/duplicate-line)
+(global-set-key (kbd "s-l c") 'mm/copy-line)
+(global-set-key (kbd "s-l d") 'mm/duplicate-line)
 (global-set-key (kbd "s-l ]") 'end-of-buffer)
 (global-set-key (kbd "s-l [") 'beginning-of-buffer)
 
@@ -385,6 +437,7 @@ same directory as the org-buffer and insert a link to this file."
 ;; toggle buffer
 (global-unset-key (kbd "s-t"))
 (global-set-key (kbd "s-t t") 'mm/toggle-main-scratch)
+(global-set-key (kbd "s-t d") 'mm/toggle-weekly-todo)
 (global-set-key (kbd "s-t e") 'mm/toggle-eshell)
 (global-set-key (kbd "s-t p") 'mm/toggle-scratch)
 (global-set-key (kbd "s-d d") 'neotree-toggle)
@@ -413,6 +466,21 @@ same directory as the org-buffer and insert a link to this file."
 (global-set-key (kbd "s-Z") 'undo-fu-only-redo)
 (global-unset-key (kbd "TAB"))
 
+;; evil normal state idle
+;; (defun evil-normalize-all-buffers ()
+;;   "Force a drop to normal state."
+;;   (unless (eq evil-state 'normal)
+;;     (dolist (buffer (buffer-list))
+;;       (set-buffer buffer)
+;;       (unless (or (minibufferp)
+;;                   (eq evil-state 'emacs))
+;;         (evil-force-normal-state)))
+;;     (message "Dropped back to normal state in all buffers")))
+
+;; (defvar evil-normal-timer
+;;   (run-with-idle-timer 20 t #'evil-normalize-all-buffers)
+  ;; "Drop back to normal state after idle for 30 seconds.")
+
 ;;(setq  evil-want-C-i-jump nil)
 ;;(evil-define-key 'normal evil-normal-state-map (kbd "C-n") 'evil-next-line)
 ;;(evil-define-key 'insert evil-insert-state-map (kbd "C-n") 'evil-next-line)
@@ -425,11 +493,12 @@ same directory as the org-buffer and insert a link to this file."
       (:desc "toggle weekly todo" "1" #'mm/toggle-weekly-todo)
       (:desc "open buffers in project" "<" #'projectile-switch-to-buffer)
       (:desc "open buffer" "," #'+ivy/switch-buffer)
-      (:desc "find file" "," #'counsel-find-file)
+      (:desc "find file" "<" #'counsel-find-file)
       (:desc "next tab" "<right>" #'centaur-tabs-forward)
       (:desc "previous tab" "<left>" #'centaur-tabs-backward)
       (:prefix-map ("r" . "rectangle")
        :desc "insert rectangle" "i" #'string-insert-rectangle
+       :desc "insert rectangle iedit" "e" #'iedit-rectangle-mode
        :desc "replace rectangle" "r" #'replace-rectangle
        :desc "delete rectangle" "d" #'delete-rectangle
        :desc "cut rectangle" "t" #'kill-rectangle
@@ -453,6 +522,7 @@ same directory as the org-buffer and insert a link to this file."
        :desc "fold-openall" "r" #'+fold/open-all)
       (:prefix-map ("p" . "project")
        :desc "open project file in other window" "w" #'projectile-find-file-other-window
+       :desc "open other open projects" "["  #'centaur-tabs-counsel-switch-group
        :desc "project search" "s" #'+ivy/project-search)
       (:prefix-map ("b" . "buffer")
        :desc "open project specific scratch window" "p" #'doom/open-project-scratch-buffer
